@@ -3,10 +3,10 @@
 #   docker compose builds with context: . , dockerfile: auth-service/Dockerfile
 FROM node:20-alpine
 
+# Build-only proxy for npm. Runtime proxy for oauth.iitd.ac.in comes from
+# docker/proxy.env via compose — do not bake HTTP_PROXY into the image.
 ARG HTTP_PROXY
 ARG HTTPS_PROXY
-ENV HTTP_PROXY=$HTTP_PROXY
-ENV HTTPS_PROXY=$HTTPS_PROXY
 
 WORKDIR /app
 
