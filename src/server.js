@@ -14,6 +14,7 @@ import AuthFlow from './services/authFlow.js';
 import authRoutes from './http/routes.js';
 import healthRoutes from './http/healthRoutes.js';
 import { startGrpcServer } from './grpc/server.js';
+import { metricsMiddleware, metricsRouter } from './metrics.js';
 
 // Composition root: construct every adapter once and inject.
 async function start() {
@@ -40,8 +41,10 @@ async function start() {
 
     const app = express();
     app.disable('x-powered-by');
+    app.use(metricsMiddleware);
     app.use(express.json());
     app.use(cookieParser());
+    app.use(metricsRouter);
     app.use(authRoutes({ auth, config, logger }));
     app.use(healthRoutes({ mongoDb, redis }));
 
