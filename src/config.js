@@ -32,7 +32,7 @@ export default {
     postLoginRedirect: process.env.POST_LOGIN_REDIRECT || '/',
 
     mongo: {
-        uri: process.env.MONGO_URI || 'mongodb://localhost:27017/auth_service',
+        uri: process.env.MONGODB_URI || 'mongodb://localhost:27017/auth_service',
         usersCollection: process.env.USERS_COLLECTION || 'users'
     },
 
