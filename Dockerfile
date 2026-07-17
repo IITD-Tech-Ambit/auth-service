@@ -3,20 +3,20 @@
 #   docker compose builds with context: . , dockerfile: auth-service/Dockerfile
 FROM node:20-alpine
 
-# Build-only proxy for npm. Runtime proxy for oauth.iitd.ac.in comes from
-# docker/proxy.env via compose — do not bake HTTP_PROXY into the image.
+# Build-only proxy for npm, plus auth for the private @iitd-tech-ambit GitHub
+# Packages registry (@iitd-tech-ambit/protos). Runtime proxy for
+# oauth.iitd.ac.in comes from docker/proxy.env via compose — do not bake
+# HTTP_PROXY or the package auth token into the image.
 ARG HTTP_PROXY
 ARG HTTPS_PROXY
+ARG NODE_AUTH_TOKEN
 
 WORKDIR /app
 
-COPY auth-service/package*.json ./
+COPY auth-service/package*.json auth-service/.npmrc ./
 RUN npm install --omit=dev
 
 COPY auth-service/src ./src
-COPY protos /app/protos
-
-ENV PROTO_DIR=/app/protos
 
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001 && \
