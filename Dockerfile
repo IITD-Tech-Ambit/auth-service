@@ -1,6 +1,7 @@
 # auth-service — IITD OAuth identity service (Express + gRPC)
-# Build context is the workspace root so /protos can be copied in:
-#   docker compose builds with context: . , dockerfile: auth-service/Dockerfile
+# Self-contained build: context is this repo's own root, so it can be built
+# standalone (e.g. by Coolify, which only clones this repo) as well as from
+# the vm-infra workspace root via docker-compose.
 FROM node:20-alpine
 
 # Build-only proxy for npm. Runtime proxy for oauth.iitd.ac.in comes from
@@ -10,10 +11,10 @@ ARG HTTPS_PROXY
 
 WORKDIR /app
 
-COPY auth-service/package*.json ./
+COPY package*.json ./
 RUN npm install --omit=dev
 
-COPY auth-service/src ./src
+COPY src ./src
 COPY protos /app/protos
 
 ENV PROTO_DIR=/app/protos
