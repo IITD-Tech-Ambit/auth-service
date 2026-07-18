@@ -1,12 +1,18 @@
-import { EnvHttpProxyAgent } from 'undici';
+import { ProxyAgent, Agent } from 'undici';
 
 /**
  * IITD OAuth 2 protocol adapter (authorize.php / token.php / resource.php).
  *
  * Outbound calls to oauth.iitd.ac.in go through the campus HTTP proxy when
- * HTTP(S)_PROXY is set: EnvHttpProxyAgent reads HTTP_PROXY / HTTPS_PROXY /
- * NO_PROXY from the environment (deploy/prod/proxy.env), matching how the other
- * services reach the outside world from this VM.
+ * OAUTH_HTTP_PROXY_URL is set. Deliberately NOT the standard HTTP_PROXY/
+ * HTTPS_PROXY env vars (previously used via undici's EnvHttpProxyAgent):
+ * those are container-wide, so any other process in the same container
+ * (e.g. wget, used by Coolify's health check) also picks them up and tries
+ * to route loopback health-check requests through the proxy too — this
+ * BusyBox wget build doesn't honor NO_PROXY, so that produced a bogus 503
+ * on every health check even though the app itself was healthy. Reading an
+ * app-specific var here keeps proxy usage scoped to exactly the one thing
+ * that needs it.
  *
  * Maps IITD resource.php fields onto the domain IdentityProfile at this boundary.
  *
@@ -21,7 +27,8 @@ export default class IitdOAuthClient {
     constructor(oauthConfig, logger) {
         this._config = oauthConfig;
         this._logger = logger;
-        this._dispatcher = new EnvHttpProxyAgent();
+        const proxyUrl = process.env.OAUTH_HTTP_PROXY_URL;
+        this._dispatcher = proxyUrl ? new ProxyAgent(proxyUrl) : new Agent();
     }
 
     buildAuthorizeUrl(state) {
