@@ -78,4 +78,3 @@ async function start() {
 }
 
 start();
-// coolify-webhook-test: 1784374313
