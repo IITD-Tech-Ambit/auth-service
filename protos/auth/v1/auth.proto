@@ -1,6 +1,5 @@
 syntax = "proto3";
 
-// sync-test: verifying pipeline
 package auth.v1;
 
 // Identity plane: session verification and user lookup.
