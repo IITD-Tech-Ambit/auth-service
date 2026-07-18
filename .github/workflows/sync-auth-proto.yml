@@ -1,0 +1,47 @@
+name: Sync auth.proto to proto-registry
+
+# This service owns auth.v1 — protos/auth/v1/auth.proto here is the source of
+# truth. On every push to main that touches it, mirror the file into
+# IITD-Tech-Ambit/proto-registry so consumers of auth.v1 always see the
+# current version. Deliberately low-ceremony: no linting, no versioning,
+# just copy + commit-if-changed + push.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "protos/auth/v1/auth.proto"
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout auth-service
+        uses: actions/checkout@v4
+        with:
+          path: auth-service
+
+      - name: Checkout proto-registry
+        uses: actions/checkout@v4
+        with:
+          repository: IITD-Tech-Ambit/proto-registry
+          token: ${{ secrets.PROTO_REGISTRY_TOKEN }}
+          path: proto-registry
+
+      - name: Copy auth.proto into proto-registry
+        run: |
+          mkdir -p proto-registry/proto/auth/v1
+          cp auth-service/protos/auth/v1/auth.proto proto-registry/proto/auth/v1/auth.proto
+
+      - name: Commit and push if changed
+        working-directory: proto-registry
+        run: |
+          git config user.name "auth-service-bot"
+          git config user.email "actions@github.com"
+          if git diff --quiet -- proto/auth/v1/auth.proto; then
+            echo "No changes to auth.proto — skipping."
+            exit 0
+          fi
+          git add proto/auth/v1/auth.proto
+          git commit -m "Sync auth.v1 from auth-service@${GITHUB_SHA}"
+          git push
