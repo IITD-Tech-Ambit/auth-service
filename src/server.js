@@ -36,6 +36,7 @@ async function start() {
         stateStore: new RedisStateStore(redis, config.oauth.stateTtlSec),
         userRepository,
         tokenIssuer: new JwtTokenIssuer(config.session),
+        enableAuth: config.enableAuth,
         logger
     });
 

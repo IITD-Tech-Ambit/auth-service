@@ -4,6 +4,10 @@ export default {
     host: process.env.HOST || '0.0.0.0',
     logLevel: process.env.LOG_LEVEL || 'info',
 
+    // Secure-by-default auth toggle. MUST stay true (or unset) in production.
+    // Only an explicit ENABLE_AUTH=false bypasses IITD OAuth for local testing.
+    enableAuth: (process.env.ENABLE_AUTH || 'true') !== 'false',
+
     grpc: {
         bindAddress: process.env.GRPC_BIND_ADDRESS || '0.0.0.0:50051'
     },
@@ -44,6 +48,9 @@ export default {
 export function validateConfig(config, logger) {
     if (!config.session.jwtSecret) {
         throw new Error('AUTH_JWT_SECRET is required — refusing to start with an empty signing key');
+    }
+    if (!config.enableAuth) {
+        logger.warn('ENABLE_AUTH=false — IITD OAuth is BYPASSED and every session resolves to a mock dev user. NEVER run like this in production.');
     }
     if (!config.oauth.clientId || !config.oauth.clientSecret) {
         logger.warn('IITD_OAUTH_CLIENT_ID / IITD_OAUTH_CLIENT_SECRET not set — OAuth login will fail until the webgroup issues credentials');

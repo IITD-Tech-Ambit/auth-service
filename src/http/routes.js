@@ -42,13 +42,14 @@ export default function authRoutes({ auth, config, logger }) {
 
     router.get('/api/auth/me', async (req, res) => {
         const token = req.cookies?.[config.session.cookieName];
-        if (!token) {
-            return res.status(401).json({ error: 'Unauthorized', message: 'Not logged in', statusCode: 401 });
-        }
         const result = auth.verifySession(token);
         if (!result.valid) {
-            res.clearCookie(config.session.cookieName, { path: '/' });
-            return res.status(401).json({ error: 'Unauthorized', message: 'Session expired', statusCode: 401 });
+            if (token) res.clearCookie(config.session.cookieName, { path: '/' });
+            return res.status(401).json({
+                error: 'Unauthorized',
+                message: token ? 'Session expired' : 'Not logged in',
+                statusCode: 401
+            });
         }
         const { iat, exp, iss, ...user } = result.claims;
         return res.json({ user });

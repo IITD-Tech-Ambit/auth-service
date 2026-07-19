@@ -1,6 +1,21 @@
 import crypto from 'crypto';
 
 /**
+ * Stable mock identity used only when ENABLE_AUTH=false. Mirrors the session
+ * claims shape produced by completeLogin so downstream consumers (the /me
+ * route and the gRPC VerifyToken adapter) behave identically to a real login.
+ */
+export const DEV_SESSION_CLAIMS = Object.freeze({
+    sub: 'dev-0000000',
+    user_id: 'devuser',
+    email: 'devuser@iitd.ac.in',
+    name: 'Dev User',
+    kerberos: 'devuser',
+    department: 'Computer Science and Engineering',
+    category: 'student'
+});
+
+/**
  * OAuth login orchestration. Depends only on ports — no gRPC/Redis/HTTP
  * client code here. IdP field mapping stays in the OAuth adapter.
  *
@@ -12,13 +27,15 @@ export default class AuthFlow {
      *           stateStore: import('../ports/ports.js').StateStore,
      *           userRepository: import('../ports/ports.js').UserRepository,
      *           tokenIssuer: import('../ports/ports.js').TokenIssuer,
+     *           enableAuth?: boolean,
      *           logger: import('pino').Logger }} deps
      */
-    constructor({ oauthProvider, stateStore, userRepository, tokenIssuer, logger }) {
+    constructor({ oauthProvider, stateStore, userRepository, tokenIssuer, enableAuth = true, logger }) {
         this._oauth = oauthProvider;
         this._states = stateStore;
         this._users = userRepository;
         this._tokens = tokenIssuer;
+        this._enableAuth = enableAuth;
         this._logger = logger;
     }
 
@@ -63,6 +80,9 @@ export default class AuthFlow {
     }
 
     verifySession(token) {
+        if (!this._enableAuth) {
+            return { valid: true, claims: { ...DEV_SESSION_CLAIMS } };
+        }
         return this._tokens.verify(token);
     }
 
