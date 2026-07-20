@@ -34,19 +34,24 @@ jobs:
           cp auth-service/protos/auth/v1/auth.proto proto-registry/proto/auth/v1/auth.proto
 
       - name: Commit and push if changed
+        id: commit
         working-directory: proto-registry
         run: |
           git config user.name "auth-service-bot"
           git config user.email "actions@github.com"
           if git diff --quiet -- proto/auth/v1/auth.proto; then
             echo "No changes to auth.proto — skipping."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           git add proto/auth/v1/auth.proto
           git commit -m "Sync auth.v1 from auth-service@${GITHUB_SHA}"
 
           for i in 1 2 3 4 5; do
-            git push && exit 0
+            if git push; then
+              echo "changed=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
             echo "Push rejected (attempt $i/5) — another sync likely raced us. Rebasing and retrying..."
             sleep $((RANDOM % 5 + 1))
             git fetch origin main
@@ -54,3 +59,15 @@ jobs:
           done
           echo "Failed to push after 5 attempts."
           exit 1
+
+      # Notify consumers listed for auth.v1 in proto-registry's consumers.yml.
+      - name: Notify consumers
+        if: steps.commit.outputs.changed == 'true'
+        run: |
+          for repo in api-gateway; do
+            curl -sf -X POST \
+              -H "Authorization: Bearer ${{ secrets.PROTO_REGISTRY_TOKEN }}" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/IITD-Tech-Ambit/${repo}/dispatches" \
+              -d '{"event_type":"proto-updated","client_payload":{"package":"auth.v1"}}'
+          done
