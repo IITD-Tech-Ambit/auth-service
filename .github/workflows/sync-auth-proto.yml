@@ -34,19 +34,24 @@ jobs:
           cp auth-service/protos/auth/v1/auth.proto proto-registry/proto/auth/v1/auth.proto
 
       - name: Commit and push if changed
+        id: commit
         working-directory: proto-registry
         run: |
           git config user.name "auth-service-bot"
           git config user.email "actions@github.com"
           if git diff --quiet -- proto/auth/v1/auth.proto; then
             echo "No changes to auth.proto — skipping."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           git add proto/auth/v1/auth.proto
           git commit -m "Sync auth.v1 from auth-service@${GITHUB_SHA}"
 
           for i in 1 2 3 4 5; do
-            git push && exit 0
+            if git push; then
+              echo "changed=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
             echo "Push rejected (attempt $i/5) — another sync likely raced us. Rebasing and retrying..."
             sleep $((RANDOM % 5 + 1))
             git fetch origin main
@@ -54,3 +59,38 @@ jobs:
           done
           echo "Failed to push after 5 attempts."
           exit 1
+
+      # Notify consumers listed for auth.v1 in proto-registry's consumers.yml.
+      # Each consumer is retried independently and a failure on one doesn't
+      # skip the rest — a bare loop with -e would abort on the first failed
+      # curl and silently leave later consumers un-notified (see the incident
+      # that motivated this: chatbot-agent's search.v1 stubs went stale for
+      # days after a dispatch failure in the sibling sync-search-proto.yml
+      # went unnoticed).
+      - name: Notify consumers
+        if: steps.commit.outputs.changed == 'true'
+        run: |
+          FAILED=""
+          for repo in api-gateway; do
+            success=false
+            for attempt in 1 2 3; do
+              if curl -sf -X POST \
+                -H "Authorization: Bearer ${{ secrets.PROTO_REGISTRY_TOKEN }}" \
+                -H "Accept: application/vnd.github+json" \
+                "https://api.github.com/repos/IITD-Tech-Ambit/${repo}/dispatches" \
+                -d '{"event_type":"proto-updated","client_payload":{"package":"auth.v1"}}'; then
+                success=true
+                break
+              fi
+              echo "Dispatch to ${repo} failed (attempt ${attempt}/3), retrying..."
+              sleep $((RANDOM % 5 + 1))
+            done
+            if [ "$success" = false ]; then
+              echo "::error::Failed to notify ${repo} after 3 attempts — it will not auto-regenerate stubs for this proto update and needs a manual sync."
+              FAILED="${FAILED} ${repo}"
+            fi
+          done
+          if [ -n "$FAILED" ]; then
+            echo "::error::Consumers not notified:${FAILED}"
+            exit 1
+          fi
