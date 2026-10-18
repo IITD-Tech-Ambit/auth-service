@@ -18,6 +18,7 @@ export default class JwtTokenIssuer {
     /** @param {import('../ports/ports.js').SessionClaims} claims */
     issue(claims) {
         return jwt.sign(claims, this._secret, {
+            algorithm: 'HS256',
             expiresIn: this._ttlSec,
             issuer: 'research-ambit-auth'
         });
@@ -25,7 +26,10 @@ export default class JwtTokenIssuer {
 
     verify(token) {
         try {
-            const claims = jwt.verify(token, this._secret, { issuer: 'research-ambit-auth' });
+            const claims = jwt.verify(token, this._secret, {
+                algorithms: ['HS256'],
+                issuer: 'research-ambit-auth'
+            });
             return { valid: true, claims };
         } catch (error) {
             return {

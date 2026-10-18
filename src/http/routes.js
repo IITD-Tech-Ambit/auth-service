@@ -12,25 +12,34 @@ import { AuthFlowError } from '../services/authFlow.js';
 export default function authRoutes({ auth, config, logger }) {
     const router = Router();
 
-    const cookieOptions = {
+    const baseCookie = {
         httpOnly: true,
         secure: config.session.cookieSecure,
-        sameSite: 'lax',
-        path: '/',
-        // Express res.cookie takes maxAge in milliseconds (Fastify used seconds).
-        maxAge: config.session.ttlSec * 1000
+        sameSite: 'lax'
     };
+    const sessionCookie = { ...baseCookie, path: '/' };
+    const stateCookieName = `${config.session.cookieName}_state`;
+    // Path /api/auth so the state cookie is only sent to the OAuth routes.
+    const stateCookie = { ...baseCookie, path: '/api/auth' };
 
     router.get('/api/auth/login', async (req, res) => {
         const authorizeUrl = await auth.beginLogin();
+        const state = new URL(authorizeUrl).searchParams.get('state');
+        res.cookie(stateCookieName, state, { ...stateCookie, maxAge: config.oauth.stateTtlSec * 1000 });
         return res.redirect(302, authorizeUrl);
     });
 
     router.get('/api/auth/callback', async (req, res) => {
-        const { code, state } = req.query;
+        const code = typeof req.query.code === 'string' ? req.query.code : '';
+        const state = typeof req.query.state === 'string' ? req.query.state : '';
+        const browserState = req.cookies?.[stateCookieName];
+        res.clearCookie(stateCookieName, stateCookie);
         try {
+            if (!state || state !== browserState) {
+                throw new AuthFlowError('invalid_state', 'OAuth state does not match this browser');
+            }
             const { sessionToken } = await auth.completeLogin(code, state);
-            res.cookie(config.session.cookieName, sessionToken, cookieOptions);
+            res.cookie(config.session.cookieName, sessionToken, { ...sessionCookie, maxAge: config.session.ttlSec * 1000 });
             return res.redirect(302, config.postLoginRedirect);
         } catch (error) {
             const reason = error instanceof AuthFlowError ? error.code : 'oauth_failed';
@@ -44,7 +53,7 @@ export default function authRoutes({ auth, config, logger }) {
         const token = req.cookies?.[config.session.cookieName];
         const result = auth.verifySession(token);
         if (!result.valid) {
-            if (token) res.clearCookie(config.session.cookieName, { path: '/' });
+            if (token) res.clearCookie(config.session.cookieName, sessionCookie);
             return res.status(401).json({
                 error: 'Unauthorized',
                 message: token ? 'Session expired' : 'Not logged in',
@@ -56,7 +65,7 @@ export default function authRoutes({ auth, config, logger }) {
     });
 
     router.post('/api/auth/logout', async (req, res) => {
-        res.clearCookie(config.session.cookieName, { path: '/' });
+        res.clearCookie(config.session.cookieName, sessionCookie);
         return res.json({ ok: true });
     });
 
