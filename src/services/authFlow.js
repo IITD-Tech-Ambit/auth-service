@@ -1,5 +1,7 @@
 import crypto from 'crypto';
 
+const SUPERADMIN_ROLE = 'superadmin';
+
 /**
  * Stable mock identity used only when ENABLE_AUTH=false. Mirrors the session
  * claims shape produced by completeLogin so downstream consumers (the /me
@@ -28,14 +30,16 @@ export default class AuthFlow {
      *           userRepository: import('../ports/ports.js').UserRepository,
      *           tokenIssuer: import('../ports/ports.js').TokenIssuer,
      *           enableAuth?: boolean,
+     *           superadminKerberos?: string[],
      *           logger: import('pino').Logger }} deps
      */
-    constructor({ oauthProvider, stateStore, userRepository, tokenIssuer, enableAuth = true, logger }) {
+    constructor({ oauthProvider, stateStore, userRepository, tokenIssuer, enableAuth = true, superadminKerberos = [], logger }) {
         this._oauth = oauthProvider;
         this._states = stateStore;
         this._users = userRepository;
         this._tokens = tokenIssuer;
         this._enableAuth = enableAuth;
+        this._superadmins = new Set(superadminKerberos);
         this._logger = logger;
     }
 
@@ -79,11 +83,18 @@ export default class AuthFlow {
         return { sessionToken, claims };
     }
 
+    // Role comes from SUPERADMIN_KERBEROS at verify time, never from the JWT.
     verifySession(token) {
-        if (!this._enableAuth) {
-            return { valid: true, claims: { ...DEV_SESSION_CLAIMS } };
+        const result = this._enableAuth
+            ? this._tokens.verify(token)
+            : { valid: true, claims: { ...DEV_SESSION_CLAIMS } };
+        if (!result.valid) return result;
+
+        const { role: _ignored, ...claims } = result.claims;
+        if (this._superadmins.has(String(claims.kerberos || '').toLowerCase())) {
+            claims.role = SUPERADMIN_ROLE;
         }
-        return this._tokens.verify(token);
+        return { valid: true, claims };
     }
 
     getUser(userId) {

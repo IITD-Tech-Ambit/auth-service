@@ -18,6 +18,7 @@
  * @property {string} kerberos
  * @property {string} department
  * @property {string} category
+ * @property {string} [role]  set at verify time; never stored in the JWT
  *
  * @typedef {Object} OAuthProvider    Speaks an OAuth 2 authorization-code flow
  * @property {(state: string) => string} buildAuthorizeUrl
