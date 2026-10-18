@@ -25,6 +25,10 @@ IITD OAuth 2 identity service for Research Ambit.
 - `AUTH_JWT_SECRET` is deliberately a different variable from the CMS
   backend's `JWT_SECRET`; portal sessions and CMS admin tokens must never
   cross-validate.
+- `SUPERADMIN_KERBEROS` (comma-separated) lists users who may edit any faculty
+  profile after a normal IITD login. The role is attached on every
+  `VerifyToken` / `/me`, never stored in the JWT, so removing an id revokes it
+  on restart.
 - Layout: `src/config.js` (env), `src/ports/` (interfaces), `src/adapters/`
   (IITD OAuth client, Redis state store, Mongo user repo, JWT issuer),
   `src/services/authFlow.js` (orchestration), `src/http/` + `src/grpc/`

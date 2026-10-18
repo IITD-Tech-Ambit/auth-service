@@ -1,5 +1,6 @@
 // Environment configuration — the only module that reads process.env.
 export default {
+    production: process.env.NODE_ENV === 'production',
     port: parseInt(process.env.PORT || '4000', 10),
     host: process.env.HOST || '0.0.0.0',
     logLevel: process.env.LOG_LEVEL || 'info',
@@ -33,6 +34,11 @@ export default {
         cookieSecure: (process.env.SESSION_COOKIE_SECURE || 'true') === 'true'
     },
 
+    superadminKerberos: (process.env.SUPERADMIN_KERBEROS || '')
+        .split(',')
+        .map((id) => id.trim().toLowerCase())
+        .filter(Boolean),
+
     postLoginRedirect: process.env.POST_LOGIN_REDIRECT || '/',
 
     mongo: {
@@ -46,8 +52,11 @@ export default {
 };
 
 export function validateConfig(config, logger) {
-    if (!config.session.jwtSecret) {
-        throw new Error('AUTH_JWT_SECRET is required — refusing to start with an empty signing key');
+    if (config.session.jwtSecret.length < 32) {
+        throw new Error('AUTH_JWT_SECRET must be at least 32 characters — refusing to start with a weak signing key');
+    }
+    if (!config.enableAuth && config.production) {
+        throw new Error('ENABLE_AUTH=false is not allowed when NODE_ENV=production — refusing to bypass IITD OAuth');
     }
     if (!config.enableAuth) {
         logger.warn('ENABLE_AUTH=false — IITD OAuth is BYPASSED and every session resolves to a mock dev user. NEVER run like this in production.');

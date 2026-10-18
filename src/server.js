@@ -37,6 +37,7 @@ async function start() {
         userRepository,
         tokenIssuer: new JwtTokenIssuer(config.session),
         enableAuth: config.enableAuth,
+        superadminKerberos: config.superadminKerberos,
         logger
     });
 

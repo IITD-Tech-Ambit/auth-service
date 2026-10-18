@@ -15,7 +15,8 @@ function toGrpcUser(source) {
         kerberos: source.kerberos || '',
         department: source.department || '',
         category: source.category || '',
-        uniqueiitdid: source.uniqueiitdid || source.sub || ''
+        uniqueiitdid: source.uniqueiitdid || source.sub || '',
+        role: source.role || ''
     };
 }
 
