@@ -1,12 +1,11 @@
-// Environment configuration — the only module that reads process.env.
 export default {
     production: process.env.NODE_ENV === 'production',
     port: parseInt(process.env.PORT || '4000', 10),
     host: process.env.HOST || '0.0.0.0',
     logLevel: process.env.LOG_LEVEL || 'info',
 
-    // Secure-by-default auth toggle. MUST stay true (or unset) in production.
-    // Only an explicit ENABLE_AUTH=false bypasses IITD OAuth for local testing.
+    // false makes verifySession return a fixed dev user. Login routes still run.
+    // Startup refuses this when NODE_ENV is production.
     enableAuth: (process.env.ENABLE_AUTH || 'true') !== 'false',
 
     grpc: {

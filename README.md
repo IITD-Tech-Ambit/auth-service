@@ -133,6 +133,10 @@ gRPC `auth.v1.AuthService` on `GRPC_BIND_ADDRESS`. The loader reads `$PROTO_DIR/
 
 A local template is `.env.example`. Do not commit secret values.
 
+## Local development
+
+`MONGODB_URI` defaults to a MongoDB on localhost. Pointing it at the VM writes login records into the production user collection. Use a local MongoDB and Redis, and an `AUTH_JWT_SECRET` that is not the production value. `ENABLE_AUTH=false` makes `verifySession` return a fixed dev user and is refused when `NODE_ENV` is `production`. Leave it unset except for a local experiment.
+
 ## Run
 
 Node.js 20 or newer. MongoDB and Redis must be reachable before startup; the process connects to both and creates the unique `user_id` index before it listens.
