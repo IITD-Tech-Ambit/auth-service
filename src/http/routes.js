@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { AuthFlowError } from '../services/authFlow.js';
+import { recordAuthOauthEvent } from '../metrics.js';
 
 /**
  * Public HTTP surface, served behind the api-gateway at /api/auth/*.
@@ -40,11 +41,17 @@ export default function authRoutes({ auth, config, logger }) {
             }
             const { sessionToken } = await auth.completeLogin(code, state);
             res.cookie(config.session.cookieName, sessionToken, { ...sessionCookie, maxAge: config.session.ttlSec * 1000 });
+            recordAuthOauthEvent('success', 'ok');
             return res.redirect(302, config.postLoginRedirect);
         } catch (error) {
             const reason = error instanceof AuthFlowError ? error.code : 'oauth_failed';
-            logger.error({ err: error.message, reason }, 'OAuth callback failed');
-            // Land back on the SPA with a marker the frontend can surface.
+            const cause = error?.cause;
+            logger.error({
+                err: error.message,
+                cause: cause?.message || cause?.code,
+                reason
+            }, 'OAuth callback failed');
+            recordAuthOauthEvent('failure', reason);
             return res.redirect(302, `${config.postLoginRedirect}?auth_error=${reason}`);
         }
     });

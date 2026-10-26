@@ -3,11 +3,8 @@ import { Agent } from 'undici';
 /**
  * IITD OAuth 2 protocol adapter (authorize.php / token.php / resource.php).
  *
- * oauth.iitd.ac.in is on the campus network, so token and resource calls
- * always use a direct undici Agent. A direct Agent does not consult
- * HTTP_PROXY, HTTPS_PROXY, NO_PROXY, or OAUTH_HTTP_PROXY_URL. The campus
- * forward proxy is for off-campus hosts; it answers CONNECT with a 302 and
- * breaks this exchange.
+ * Token and resource calls use a direct Agent and do not read proxy env vars.
+ * oauth.iitd.ac.in is on the campus network.
  *
  * Maps IITD resource.php fields onto the domain IdentityProfile at this boundary.
  *
