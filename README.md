@@ -23,7 +23,7 @@ express (cookie-parser)                         (default 0.0.0.0:50051, insecure
             |     unique index on user_id
             |-- JwtTokenIssuer ------ HS256, iss research-ambit-auth
             |-- IitdOAuthClient ------ IITD_OAUTH_* URLs
-                  ProxyAgent only when OAUTH_HTTP_PROXY_URL is set
+                  direct Agent; ignores campus and env proxies
 ```
 
 `src/server.js` is the composition root: it checks config, connects MongoDB and Redis, builds the four adapters, and starts HTTP and gRPC in one process. `GET /health` pings both stores. `GET /metrics` exposes Prometheus metrics on the same HTTP port.
@@ -80,7 +80,7 @@ Default endpoints, overridable by env:
 - `IITD_OAUTH_TOKEN_URL` — `https://oauth.iitd.ac.in/token.php`
 - `IITD_OAUTH_RESOURCE_URL` — `https://oauth.iitd.ac.in/resource.php`
 
-Each token and resource POST aborts after `OAUTH_REQUEST_TIMEOUT_MS` (default 10000). If `OAUTH_HTTP_PROXY_URL` is set, those calls use an undici `ProxyAgent`. If it is unset, they use a direct agent. This client does not read `HTTP_PROXY`, `HTTPS_PROXY`, or `NO_PROXY`.
+Each token and resource POST aborts after `OAUTH_REQUEST_TIMEOUT_MS` (default 10000). Those calls always use a direct undici `Agent`. `oauth.iitd.ac.in` is on the campus network, so they do not go through the institutional forward proxy. The client does not read `HTTP_PROXY`, `HTTPS_PROXY`, `NO_PROXY`, or `OAUTH_HTTP_PROXY_URL`.
 
 The callback route is `GET /api/auth/callback`. `OAUTH_REDIRECT_URI` (default `https://researchambit.iitd.ac.in/api/auth/callback`) is loaded into config and is not added to the authorize or token request. The route comment records that public URL as the redirect URI registered with the IITD webgroup. Missing `IITD_OAUTH_CLIENT_ID` or `IITD_OAUTH_CLIENT_SECRET` logs a warning and does not stop the process; login then fails at the token request.
 
@@ -104,7 +104,7 @@ gRPC `auth.v1.AuthService` on `GRPC_BIND_ADDRESS`. The loader reads `$PROTO_DIR/
 
 ## Configuration
 
-`src/server.js` loads a local `.env` through `dotenv`. `src/config.js` reads the settings below. Three other modules read `process.env` directly: the logger (`NODE_ENV`, pretty output unless `production`), the OAuth client (`OAUTH_HTTP_PROXY_URL`), and the gRPC loader (`PROTO_DIR`). Names and defaults:
+`src/server.js` loads a local `.env` through `dotenv`. `src/config.js` reads the settings below. Two other modules read `process.env` directly: the logger (`NODE_ENV`, pretty output unless `production`) and the gRPC loader (`PROTO_DIR`). The OAuth client does not read proxy variables. Names and defaults:
 
 | Variable | Default / rule |
 | --- | --- |
@@ -119,7 +119,6 @@ gRPC `auth.v1.AuthService` on `GRPC_BIND_ADDRESS`. The loader reads `$PROTO_DIR/
 | `OAUTH_REDIRECT_URI` | public callback URL; not sent on OAuth requests |
 | `OAUTH_STATE_TTL_SEC` | `600` |
 | `OAUTH_REQUEST_TIMEOUT_MS` | `10000` |
-| `OAUTH_HTTP_PROXY_URL` | unset means direct connections |
 | `AUTH_JWT_SECRET` | required, at least 32 characters; not `JWT_SECRET` |
 | `SESSION_TTL_SEC` | `604800` |
 | `SESSION_COOKIE_NAME` | `ra_session` |
