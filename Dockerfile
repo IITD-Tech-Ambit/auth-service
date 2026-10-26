@@ -4,8 +4,7 @@
 # the vm-infra workspace root via docker-compose.
 FROM node:20-alpine
 
-# Build-only proxy for npm, passed as a build arg. It is not copied into the
-# image. oauth.iitd.ac.in is on the campus network, so runtime calls are direct.
+# Build-time only. Not copied into the image.
 ARG HTTP_PROXY
 ARG HTTPS_PROXY
 

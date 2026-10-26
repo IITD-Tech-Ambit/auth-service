@@ -80,7 +80,7 @@ Default endpoints, overridable by env:
 - `IITD_OAUTH_TOKEN_URL` — `https://oauth.iitd.ac.in/token.php`
 - `IITD_OAUTH_RESOURCE_URL` — `https://oauth.iitd.ac.in/resource.php`
 
-Each token and resource POST aborts after `OAUTH_REQUEST_TIMEOUT_MS` (default 10000). Those calls always use a direct undici `Agent`. `oauth.iitd.ac.in` is on the campus network, so they do not go through the institutional forward proxy. The client does not read `HTTP_PROXY`, `HTTPS_PROXY`, `NO_PROXY`, or `OAUTH_HTTP_PROXY_URL`.
+Each token and resource POST aborts after `OAUTH_REQUEST_TIMEOUT_MS` (default 10000). Those calls use a direct undici `Agent` and do not read proxy environment variables. `oauth.iitd.ac.in` is on the campus network.
 
 The callback route is `GET /api/auth/callback`. `OAUTH_REDIRECT_URI` (default `https://researchambit.iitd.ac.in/api/auth/callback`) is loaded into config and is not added to the authorize or token request. The route comment records that public URL as the redirect URI registered with the IITD webgroup. Missing `IITD_OAUTH_CLIENT_ID` or `IITD_OAUTH_CLIENT_SECRET` logs a warning and does not stop the process; login then fails at the token request.
 
@@ -95,7 +95,7 @@ Served on `HOST`:`PORT`. The route module comments that these paths are what the
 | `GET` | `/api/auth/me` | Session claims from the cookie, or 401 |
 | `POST` | `/api/auth/logout` | Clear the session cookie |
 | `GET` | `/health` | MongoDB and Redis pings; body `ok` or `degraded`, HTTP status 200 either way |
-| `GET` | `/metrics` | Prometheus text |
+| `GET` | `/metrics` | Prometheus text, including `auth_oauth_events_total{result,reason}` |
 
 gRPC `auth.v1.AuthService` on `GRPC_BIND_ADDRESS`. The loader reads `$PROTO_DIR/auth/v1/auth.proto`. Unset, `PROTO_DIR` resolves to `../../../protos` from `src/grpc` (a directory outside this package). The image sets `PROTO_DIR=/app/protos` and copies this repo's `protos/` there.
 
