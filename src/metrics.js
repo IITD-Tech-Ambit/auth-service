@@ -15,6 +15,20 @@ const register = new client.Registry();
 register.setDefaultLabels({ service: 'auth-service' });
 client.collectDefaultMetrics({ register });
 
+const authOauthEvents = new client.Counter({
+    name: 'auth_oauth_events_total',
+    help: 'IITD OAuth callback outcomes',
+    labelNames: ['result', 'reason'],
+    registers: [register]
+});
+
+const KNOWN_REASONS = new Set(['ok', 'invalid_state', 'missing_params', 'oauth_failed']);
+
+export function recordAuthOauthEvent(result, reason) {
+    const safeReason = KNOWN_REASONS.has(reason) ? reason : 'other';
+    authOauthEvents.labels(result, safeReason).inc();
+}
+
 const httpRequestDuration = new client.Histogram({
     name: 'http_request_duration_seconds',
     help: 'HTTP request duration in seconds',
